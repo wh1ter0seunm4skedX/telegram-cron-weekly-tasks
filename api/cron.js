@@ -110,18 +110,15 @@ function taskTitle(text) {
 }
 
 function formatTaskLine(t, nowTs) {
-  const created = formatDate(t.createdAt);
   const days = ageDays(t.createdAt, nowTs);
   const title = taskTitle(t.text);
-  return `• <b>${htmlEscape(title)}</b> <i>${LRM}[${created} · ${days}d]</i>`;
+  return `• <b>${htmlEscape(title)}</b> <b>${LRM}[${days}d]</b>`;
 }
 
 function formatDoneLine(t) {
-  const created = formatDate(t.createdAt);
-  const done = t.doneAt ? formatDate(t.doneAt) : '';
   const age = t.doneAt ? ageDays(t.createdAt, t.doneAt) : ageDays(t.createdAt);
   const title = taskTitle(t.text);
-  return `• <b>${htmlEscape(title)}</b> <i>${LRM}[${created} → ${done} · ${age}d]</i>`;
+  return `• <b>${htmlEscape(title)}</b> <b>${LRM}[${age}d]</b>`;
 }
 
 function chunkMessages(lines, maxLen = 3800) {
@@ -345,4 +342,3 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: String(err) });
   }
 };
-
