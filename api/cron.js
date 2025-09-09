@@ -112,14 +112,10 @@ function taskTitle(text) {
 function formatTaskLine(t, nowTs) {
   const days = ageDays(t.createdAt, nowTs);
   const title = taskTitle(t.text);
-  return `• <b>${htmlEscape(title)}</b> <b>${LRM}[${days}d]</b>`;
+  return `• ${htmlEscape(title)} <b>${LRM}[${days}d]</b>`;
 }
 
-function formatDoneLine(t) {
-  const age = t.doneAt ? ageDays(t.createdAt, t.doneAt) : ageDays(t.createdAt);
-  const title = taskTitle(t.text);
-  return `• <b>${htmlEscape(title)}</b> <b>${LRM}[${age}d]</b>`;
-}
+// (No done section formatter needed)
 
 function chunkMessages(lines, maxLen = 3800) {
   const chunks = [];
@@ -262,8 +258,7 @@ module.exports = async (req, res) => {
 
     let lines = [];
     let header = '';
-    let doneLines = [];
-    let doneHeader = '';
+    // no done section
 
     if (haveKV) {
       // Build report from stored tasks
@@ -279,24 +274,17 @@ module.exports = async (req, res) => {
       } catch {}
 
       const tasks = [];
-      const doneTasks = [];
       for (const k of keys) {
         try {
           const v = await kv.get(k);
           if (!v) continue;
           const obj = JSON.parse(v);
-          if (!obj.done) tasks.push(obj); else doneTasks.push(obj);
+          if (!obj.done) tasks.push(obj);
         } catch {}
       }
       tasks.sort((a, b) => a.createdAt - b.createdAt);
       lines = tasks.map((t) => formatTaskLine(t, now));
       header = `<b>🟢 Open tasks: ${lines.length}</b>`;
-
-      const recentDone = doneTasks
-        .filter((t) => t.doneAt && t.doneAt >= since)
-        .sort((a, b) => a.doneAt - b.doneAt);
-      doneLines = recentDone.map((t) => formatDoneLine(t));
-      doneHeader = `<b>✅ Done in last 24h: ${doneLines.length}</b>`;
     } else {
       // Fallback: no Upstash → report recent non-emoji messages (last 24h)
       const candidates = updates.filter((u) => {
@@ -320,18 +308,13 @@ module.exports = async (req, res) => {
     const payload = [];
     if (header) payload.push(header);
     if (lines.length) payload.push('', ...lines);
-    if (doneHeader) {
-      if (payload.length) payload.push('');
-      payload.push(doneHeader);
-      if (doneLines.length) payload.push('', ...doneLines);
-    }
     const chunks = chunkMessages(payload.length ? payload : ['No data']);
 
     for (const chunk of chunks) {
       await t.sendMessage(ADMIN_CHAT_ID, `${RLE}${chunk}${PDF}`);
     }
 
-    res.status(200).json({ ok: true, checked: updates.length, reported: lines.length, done: doneLines.length });
+    res.status(200).json({ ok: true, checked: updates.length, reported: lines.length });
   } catch (err) {
     console.error(err);
     try {
