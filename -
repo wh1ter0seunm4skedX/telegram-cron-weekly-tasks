@@ -8,10 +8,6 @@ on:
 jobs:
   ping:
     runs-on: ubuntu-latest
-    concurrency:
-      group: cron-ping
-      cancel-in-progress: true
-    timeout-minutes: 1
     steps:
       - name: Call Vercel cron endpoint
         env:
@@ -19,4 +15,6 @@ jobs:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "$CRON_URL" ]; then echo "Missing CRON_URL secret"; exit 1; fi
-          curl -fsS --retry 2 --retry-all-errors "$CRON_URL?key=$CRON_SECRET" -X GET --max-time 20
+          curl -fsS "$CRON_URL?key=$CRON_SECRET" -X GET --max-time 20
+
+
