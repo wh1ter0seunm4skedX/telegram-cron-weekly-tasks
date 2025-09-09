@@ -57,7 +57,15 @@ const kv = {
     const res = await fetch(url, { headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` } });
     if (!res.ok) throw new Error(`Redis SCAN failed: ${res.status}`);
     const data = await res.json();
-    return data; // { cursor: '0'|'next', results: [keys] }
+    // Upstash REST returns: { result: [nextCursor, [keys...]] }
+    if (Array.isArray(data?.result) && data.result.length === 2) {
+      const [nextCursor, keys] = data.result;
+      return { cursor: String(nextCursor || '0'), keys: Array.isArray(keys) ? keys : [] };
+    }
+    // Fallback for other shapes
+    const cursorOut = data?.cursor || '0';
+    const keysOut = Array.isArray(data?.results) ? data.results : Array.isArray(data?.keys) ? data.keys : [];
+    return { cursor: String(cursorOut), keys: keysOut };
   },
 };
 
@@ -212,7 +220,7 @@ module.exports = async (req, res) => {
         do {
           const out = await kv.scan(cursor, match, 200);
           cursor = out.cursor || '0';
-          for (const k of out.result || out.results || []) keys.push(k);
+          for (const k of out.keys || []) keys.push(k);
         } while (cursor !== '0' && keys.length < 5000);
       } catch (e) {
         // ignore scan errors, fallback below
