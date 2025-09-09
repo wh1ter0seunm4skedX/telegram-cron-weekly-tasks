@@ -24,7 +24,8 @@ const t = {
   getUpdates: async (offset) => {
     return t.api('getUpdates', {
       offset,
-      allowed_updates: ['message'],
+      // include reactions so a 👍 reaction (not reply) can close tasks
+      allowed_updates: ['message', 'message_reaction'],
       timeout: 0,
     });
   },
@@ -140,6 +141,20 @@ async function fetchAllUpdates(startOffset) {
   return { updates: all, nextOffset: offset };
 }
 
+function extractReactionEmojis(r) {
+  if (!r) return [];
+  let arr = r.new_reaction || r.new_reactions || r.reaction || r.reactions || [];
+  if (!Array.isArray(arr)) arr = [arr];
+  const out = [];
+  for (const it of arr) {
+    if (!it) continue;
+    if (typeof it === 'string') out.push(it);
+    else if (typeof it.emoji === 'string') out.push(it.emoji);
+    else if (typeof it.value === 'string') out.push(it.value);
+  }
+  return out;
+}
+
 module.exports = async (req, res) => {
   try {
     if (!TG_TOKEN || !ADMIN_CHAT_ID) {
@@ -162,6 +177,35 @@ module.exports = async (req, res) => {
       // Fall through to the previous behavior below
     } else {
       for (const u of updates) {
+        // 1) Handle reactions to mark tasks done (no reply needed)
+        const mr = u.message_reaction || u.messageReaction;
+        if (mr) {
+          try {
+            const chat = mr.chat;
+            const actorId = mr.user?.id || mr.from?.id || u.user?.id || u.from?.id;
+            if (!chat || chat.type !== 'private') {
+              // restrict to your DM only
+            } else if (String(actorId) === String(ADMIN_CHAT_ID)) {
+              const emojis = extractReactionEmojis(mr);
+              const hasThumb = emojis.some((e) => typeof e === 'string' && e.includes('👍'));
+              const targetMsgId = mr.message_id || mr.message?.message_id || mr.msg_id;
+              if (hasThumb && targetMsgId) {
+                const taskKey = `task:${chat.id}:${targetMsgId}`;
+                const val = await kv.get(taskKey);
+                if (val) {
+                  const obj = JSON.parse(val);
+                  obj.done = true;
+                  obj.doneAt = Date.now();
+                  await kv.set(taskKey, JSON.stringify(obj));
+                }
+              }
+            }
+          } catch (_) {}
+          // continue to next update
+          continue;
+        }
+
+        // 2) Handle messages for creating tasks (and reply-based done for backward compat)
         const m = u.message;
         if (!m) continue;
         const chat = m.chat;
@@ -173,7 +217,6 @@ module.exports = async (req, res) => {
         const keyBase = `task:${chat.id}:${m.message_id}`;
 
         if (m.reply_to_message) {
-          // If you reply with 👍 to a prior message, mark that prior message as done
           if (isThumb) {
             const replied = m.reply_to_message;
             const taskKey = `task:${chat.id}:${replied.message_id}`;
