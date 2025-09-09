@@ -46,6 +46,17 @@ Uses Telegram Bot API polling. For persistence across days, configure Upstash Re
   - `https://<your-deployment>/api/whoami`
   - `https://<your-deployment>/api/cron`
 
+## Hourly On Hobby (workaround)
+Vercel Hobby only supports daily cron. To run hourly, use GitHub Actions to ping your endpoint:
+
+- Add two GitHub repository secrets:
+  - `CRON_URL` → `https://<your-deployment>/api/cron`
+  - `CRON_SECRET` → any strong random string
+- In Vercel, add the same `CRON_SECRET` env var.
+- This repo includes `.github/workflows/hourly-cron.yml` which calls `CRON_URL?key=<secret>` hourly.
+
+Security: `api/cron.js` checks `CRON_SECRET` and returns 401 if the key is missing or wrong.
+
 ## Local Testing (Without Vercel CLI)
 - Prereqs: Node 18+
 - `.env`:
@@ -58,4 +69,3 @@ Uses Telegram Bot API polling. For persistence across days, configure Upstash Re
 - Test:
   - `http://localhost:3000/api/whoami`
   - `http://localhost:3000/api/cron`
-

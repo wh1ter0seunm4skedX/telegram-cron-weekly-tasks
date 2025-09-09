@@ -8,6 +8,7 @@
 
 const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID; // your user or chat ID (number)
+const CRON_SECRET = process.env.CRON_SECRET; // optional shared secret for external cron pings
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL; // optional but required for tasks persistence
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
@@ -185,6 +186,19 @@ function extractReactionEmojis(r) {
 
 module.exports = async (req, res) => {
   try {
+    // Optional auth for external schedulers (e.g., GitHub Actions)
+    if (CRON_SECRET) {
+      let provided = '';
+      try {
+        const u = new URL(req.url || '', 'http://localhost');
+        provided = u.searchParams.get('key') || '';
+      } catch (_) {}
+      if (provided !== CRON_SECRET) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+    }
+
     if (!TG_TOKEN || !ADMIN_CHAT_ID) {
       res.status(500).json({ error: 'Missing env vars: TELEGRAM_BOT_TOKEN, ADMIN_CHAT_ID' });
       return;
