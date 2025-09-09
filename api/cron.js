@@ -131,6 +131,15 @@ function ageDays(fromTs, nowTs = Date.now()) {
   return Math.floor(ms / (24 * 60 * 60 * 1000));
 }
 
+function formatDate(ts) {
+  // UTC date only (YYYY-MM-DD)
+  try {
+    return new Date(ts).toISOString().slice(0, 10);
+  } catch (_) {
+    return '';
+  }
+}
+
 function taskTitle(text) {
   if (!text) return '';
   const first = String(text).split(/\r?\n/)[0].trim();
@@ -138,7 +147,7 @@ function taskTitle(text) {
 }
 
 function formatTaskLine(t, nowTs) {
-  const created = formatTime(t.createdAt);
+  const created = formatDate(t.createdAt);
   const days = ageDays(t.createdAt, nowTs);
   const title = taskTitle(t.text);
   return `- [${created} | ${days}d] ${title}`;
