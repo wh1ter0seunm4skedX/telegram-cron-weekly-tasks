@@ -125,6 +125,25 @@ function chunkMessages(lines, maxLen = 3800) {
   return chunks;
 }
 
+function ageDays(fromTs, nowTs = Date.now()) {
+  if (!fromTs || fromTs > nowTs) return 0;
+  const ms = nowTs - fromTs;
+  return Math.floor(ms / (24 * 60 * 60 * 1000));
+}
+
+function taskTitle(text) {
+  if (!text) return '';
+  const first = String(text).split(/\r?\n/)[0].trim();
+  return snippet(first, 160);
+}
+
+function formatTaskLine(t, nowTs) {
+  const created = formatTime(t.createdAt);
+  const days = ageDays(t.createdAt, nowTs);
+  const title = taskTitle(t.text);
+  return `- [${created} | ${days}d] ${title}`;
+}
+
 async function fetchAllUpdates(startOffset) {
   let offset = startOffset;
   const all = [];
@@ -278,7 +297,7 @@ module.exports = async (req, res) => {
         } catch (_) {}
       }
       tasks.sort((a, b) => a.createdAt - b.createdAt);
-      lines = tasks.map((t) => `- [${formatTime(t.createdAt)}] ${snippet(t.text)}`);
+      lines = tasks.map((t) => formatTaskLine(t, now));
       header = `Open tasks: ${lines.length}`;
     } else {
       // Fallback to previous no-emoji-in-24h behavior (no persistence)
