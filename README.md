@@ -43,6 +43,19 @@ It uses Telegram Bot API polling only (no external storage) and drains all pendi
   - `https://<your-deployment>/api/whoami` to discover chat IDs
   - `https://<your-deployment>/api/cron` to trigger a manual run
 
+## Local Testing (without Vercel CLI)
+- Prereqs: Node 18+
+- Env: create `.env` with:
+  - `TELEGRAM_BOT_TOKEN=<your token>`
+  - `ADMIN_CHAT_ID=<your numeric id>`
+- Clear webhook (for polling): open `https://api.telegram.org/bot<YOUR_TOKEN>/setWebhook?url=`
+- Start: `node dev.js`
+- Visit locally:
+  - `http://localhost:3000/api/whoami`
+  - `http://localhost:3000/api/cron`
+
+Tip: If `vercel dev` is unstable on Windows, use this local runner or WSL2.
+
 ## Customize
 - Change the schedule in `vercel.json` → `crons[0].schedule` (CRON, UTC).
 - Tweak the snippet length or emoji detection in `api/cron.js`.
