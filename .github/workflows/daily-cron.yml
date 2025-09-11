@@ -14,14 +14,14 @@ jobs:
       cancel-in-progress: true
     timeout-minutes: 1
     steps:
-      - name: Guard — only run at 09:00 Asia/Jerusalem
+      - name: Compute Asia/Jerusalem hour
+        id: tz
         run: |
           H=$(TZ=Asia/Jerusalem date +%H)
-          if [ "$H" != "09" ]; then
-            echo "Skipping (current Asia/Jerusalem hour=$H)"
-            exit 0
-          fi
+          echo "hour=$H" >> "$GITHUB_OUTPUT"
+          echo "Current Asia/Jerusalem hour=$H"
       - name: Call Vercel cron endpoint
+        if: steps.tz.outputs.hour == '09'
         env:
           CRON_URL: ${{ secrets.CRON_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
