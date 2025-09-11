@@ -1,8 +1,9 @@
-name: Hourly Cron
+name: Daily Cron
 
 on:
   schedule:
-    - cron: '0 */12 * * *'
+    # GitHub Actions cron is UTC only; run hourly and gate by Asia/Jerusalem time
+    - cron: '0 * * * *'
   workflow_dispatch: {}
 
 jobs:
@@ -13,6 +14,13 @@ jobs:
       cancel-in-progress: true
     timeout-minutes: 1
     steps:
+      - name: Guard — only run at 09:00 Asia/Jerusalem
+        run: |
+          H=$(TZ=Asia/Jerusalem date +%H)
+          if [ "$H" != "09" ]; then
+            echo "Skipping (current Asia/Jerusalem hour=$H)"
+            exit 0
+          fi
       - name: Call Vercel cron endpoint
         env:
           CRON_URL: ${{ secrets.CRON_URL }}
